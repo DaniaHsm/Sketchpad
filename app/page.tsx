@@ -1,39 +1,48 @@
 'use client';
 
 import { useDraw } from "@/hooks/useDraw";
-import React, { FC } from "react";
-import { ChromePicker } from 'react-color';
+import React, { FC, useState, useEffect } from "react";
+import { ChromePicker } from "react-color";
 
 interface PageProps {}
 
-const page: FC<PageProps> = () => {
-  const [color, setColor] = React.useState('#000000'); // Default line color
+const Page: FC<PageProps> = () => {
+  const [color, setColor] = useState("#000000");
+  const [isEraser, setIsEraser] = useState(false);
+  const [eraserSize, setEraserSize] = useState(20);
   const { canvasRef, onMouseDown, clear } = useDraw(drawLine);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true); // Ensure this runs only on the client
+  }, []);
 
   function drawLine({ prevPoint, currentPoint, ctx }: Draw) {
     const { x: currX, y: currY } = currentPoint;
-    const lineColor = color;
-    const lineWidth = 5;
+    const lineColor = isEraser ? "#FFFFFF" : color;
+    const lineWidth = isEraser ? eraserSize : 5;
 
     let startPoint = prevPoint ?? currentPoint;
+    ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over";
     ctx.beginPath();
     ctx.lineWidth = lineWidth;
     ctx.strokeStyle = lineColor;
     ctx.moveTo(startPoint.x, startPoint.y);
     ctx.lineTo(currX, currY);
     ctx.stroke();
-
-    ctx.fillStyle = lineColor;
-    ctx.beginPath();
-    ctx.arc(startPoint.x, startPoint.y, 2, 0, Math.PI * 2);
-    ctx.fill();
   }
 
   return (
     <div className="w-screen h-screen bg-white flex items-center p-6">
-      {/* Sidebar for color picker and button */}
-      <div className="flex flex-col gap-10 pr-10">
-        <ChromePicker color={color} onChange={(e) => setColor(e.hex)} />
+      <div className="flex flex-col gap-4 pr-10">
+        {/* Ensure ChromePicker only renders on the client */}
+        {isClient && (
+          <ChromePicker
+            color={color}
+            onChange={(e) => setColor(e.hex)}
+          />
+        )}
+
         <button
           type="button"
           className="p-2 rounded-md bg-black text-white hover:bg-gray-700"
@@ -41,9 +50,31 @@ const page: FC<PageProps> = () => {
         >
           Clear Canvas
         </button>
+
+        <button
+          type="button"
+          className={`p-2 rounded-md ${isEraser ? 'bg-red-500' : 'bg-gray-500'} text-white`}
+          onClick={() => setIsEraser(!isEraser)}
+        >
+          {isEraser ? "Disable Eraser" : "Enable Eraser"}
+        </button>
+
+        {isEraser && (
+          <div className="flex flex-col gap-2">
+            <label htmlFor="eraserSize">Eraser Size: {eraserSize}px</label>
+            <input
+              id="eraserSize"
+              type="range"
+              min="5"
+              max="50"
+              value={eraserSize}
+              onChange={(e) => setEraserSize(parseInt(e.target.value))}
+              className="cursor-pointer"
+            />
+          </div>
+        )}
       </div>
 
-      {/* Canvas */}
       <canvas
         onMouseDown={onMouseDown}
         ref={canvasRef}
@@ -55,4 +86,4 @@ const page: FC<PageProps> = () => {
   );
 };
 
-export default page;
+export default Page;
